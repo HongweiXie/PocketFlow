@@ -53,8 +53,6 @@ def parse_example_proto(example_serialized):
     'image/encoded': tf.FixedLenFeature([], dtype=tf.string, default_value=''),
     'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64, default_value=-1),
   }
-  bbox_keys = ['image/object/bbox/' + x for x in ['xmin', 'ymin', 'xmax', 'ymax']]
-  feature_map.update({key: tf.VarLenFeature(dtype=tf.float32) for key in bbox_keys})
   features = tf.parse_single_example(example_serialized, feature_map)
 
   # obtain the label and bounding boxes

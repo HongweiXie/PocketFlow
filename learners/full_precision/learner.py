@@ -26,6 +26,10 @@ from learners.distillation_helper import DistillationHelper
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw
 
 FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_string('checkpoint_path', None, 'checkpoint_path')
+tf.app.flags.DEFINE_string('checkpoint_exclude_scopes', '', 'checkpoint_exclude_scopes')
+tf.app.flags.DEFINE_boolean('ignore_missing_vars', True, 'ignore_missing_vars')
+
 
 class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-attributes
   """Full-precision learner (no model compression applied)."""
@@ -56,9 +60,14 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
 
   def train(self):
     """Train a model and periodically produce checkpoint files."""
-
     # initialization
     self.sess_train.run(self.init_op)
+
+    if self.restore_checkpoint_saver is not None:
+      checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path) if tf.gfile.IsDirectory(
+        FLAGS.checkpoint_path) else FLAGS.checkpoint_path
+      self.restore_checkpoint_saver.restore(self.sess_train,checkpoint_path)
+
     if FLAGS.enbl_multi_gpu:
       self.sess_train.run(self.bcast_op)
 
@@ -126,6 +135,8 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
         # forward pass
         logits = self.forward_train(images) if is_train else self.forward_eval(images)
         tf.add_to_collection('logits_final', logits)
+        if(is_train):
+          self.restore_checkpoint_saver=self.__build_restore_from_checkpoint_saver()
 
         # loss & extra evalution metrics
         loss, metrics = self.calc_loss(labels, logits, self.trainable_vars)
@@ -175,14 +186,57 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
       save_path = self.saver_eval.save(self.sess_eval, FLAGS.save_path_eval)
     tf.logging.info('model saved to ' + save_path)
 
+  def __build_restore_from_checkpoint_saver(self):
+    if FLAGS.checkpoint_path is None:
+      return None
+    exclusion_scopes = []
+    checkpoint_exclude_scopes=FLAGS.checkpoint_exclude_scopes
+    if checkpoint_exclude_scopes:
+      exclusion_scopes = [scope.strip() for scope in checkpoint_exclude_scopes.split(',')]
+
+    variables_to_restore = []
+    for var in self.trainable_vars:
+      excluded = False
+      for exclusion in exclusion_scopes:
+        if exclusion in var.op.name:  # .startswith(exclusion):
+          excluded = True
+          break
+      if not excluded:
+        variables_to_restore.append(var)
+
+    checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path) if tf.gfile.IsDirectory(
+      FLAGS.checkpoint_path) else FLAGS.checkpoint_path
+
+    tf.logging.info('Fine-tuning from %s. Ignoring missing vars: %s.' % (checkpoint_path, FLAGS.ignore_missing_vars))
+
+    if not variables_to_restore:
+      raise ValueError('variables_to_restore cannot be empty')
+    if FLAGS.ignore_missing_vars:
+      reader = tf.train.NewCheckpointReader(checkpoint_path)
+      if isinstance(variables_to_restore, dict):
+        var_dict = variables_to_restore
+      else:
+        var_dict = {var.op.name: var for var in variables_to_restore}
+      available_vars = {}
+      for var in var_dict:
+        if reader.has_tensor(var):
+          available_vars[var] = var_dict[var]
+        else:
+          tf.logging.warning('Variable %s missing in checkpoint %s.', var, checkpoint_path)
+      variables_to_restore = available_vars
+    if variables_to_restore:
+      saver = tf.train.Saver(variables_to_restore, reshape=False)
+      return saver
+
+
   def __restore_model(self, is_train):
     """Restore a model from the latest checkpoint files.
 
     Args:
     * is_train: whether to restore a model for training
     """
-
-    save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
+    save_path = tf.train.latest_checkpoint(FLAGS.save_path)
+    # save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
     if is_train:
       self.saver_train.restore(self.sess_train, save_path)
     else:

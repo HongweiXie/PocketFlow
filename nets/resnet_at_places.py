@@ -162,4 +162,4 @@ class ModelHelper(AbstractModelHelper):
   def dataset_name(self):
     """Dataset's name."""
 
-    return 'ilsvrc_12'
+    return 'places'
