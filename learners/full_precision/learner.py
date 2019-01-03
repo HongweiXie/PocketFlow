@@ -235,8 +235,8 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
     Args:
     * is_train: whether to restore a model for training
     """
-    save_path = tf.train.latest_checkpoint(FLAGS.save_path)
-    # save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
+    # save_path = tf.train.latest_checkpoint(FLAGS.save_path)
+    save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
     if is_train:
       self.saver_train.restore(self.sess_train, save_path)
     else:
