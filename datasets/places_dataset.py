@@ -25,7 +25,7 @@ from utils.external.imagenet_preprocessing import preprocess_image
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_integer('nb_classes', 159, '# of classes')
-tf.app.flags.DEFINE_integer('nb_smpls_train', 15900, '# of samples for training')
+tf.app.flags.DEFINE_integer('nb_smpls_train', 775017, '# of samples for training')
 tf.app.flags.DEFINE_integer('nb_smpls_val', 15900, '# of samples for validation')
 tf.app.flags.DEFINE_integer('nb_smpls_eval', 50000, '# of samples for evaluation')
 tf.app.flags.DEFINE_integer('batch_size', 64, 'batch size per GPU for training')
@@ -115,7 +115,7 @@ class PlacesDataset(AbstractDataset):
 
     # configure file patterns & function handlers
     if is_train:
-      self.file_pattern = os.path.join(data_dir, 'val-*-of-*')
+      self.file_pattern = os.path.join(data_dir, 'train-*-of-*')
       self.batch_size = FLAGS.batch_size
     else:
       self.file_pattern = os.path.join(data_dir, 'val-*-of-*')
