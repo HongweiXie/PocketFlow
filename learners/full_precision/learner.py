@@ -29,6 +29,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('checkpoint_path', None, 'checkpoint_path')
 tf.app.flags.DEFINE_string('checkpoint_exclude_scopes', '', 'checkpoint_exclude_scopes')
 tf.app.flags.DEFINE_boolean('ignore_missing_vars', True, 'ignore_missing_vars')
+tf.app.flags.DEFINE_string('checkpoint_model_scope', '', 'checkpoint_model_scope')
 
 
 class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-attributes
@@ -160,6 +161,8 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
         self.sess_train = sess
         with tf.control_dependencies(self.update_ops):
           self.train_op = optimizer.apply_gradients(grads, global_step=self.global_step)
+        # summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+        # print('summaries')
         self.summary_op = tf.summary.merge_all()
         self.log_op = [lrn_rate, loss] + list(metrics.values())
         self.log_op_names = ['lr', 'loss'] + list(metrics.keys())
@@ -203,6 +206,25 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
           break
       if not excluded:
         variables_to_restore.append(var)
+    model_scope='model'
+    name_remap=None
+    if FLAGS.checkpoint_model_scope is not None:
+        if FLAGS.checkpoint_model_scope.strip() == '':
+            variables_to_restore = {var.op.name.replace(model_scope + '/', ''): var for var in variables_to_restore}
+        else:
+            variables_to_restore = {var.op.name.replace(model_scope, FLAGS.checkpoint_model_scope.strip()): var for var in variables_to_restore}
+        if name_remap is not None:
+            renamed_variables_to_restore = dict()
+            for var_name, var in variables_to_restore.items():
+                found = False
+                for k, v in name_remap.items():
+                    if k in var_name:
+                        renamed_variables_to_restore[var_name.replace(k, v)] = var
+                        found = True
+                        break
+                if not found:
+                    renamed_variables_to_restore[var_name] = var
+            variables_to_restore = renamed_variables_to_restore
 
     checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path) if tf.gfile.IsDirectory(
       FLAGS.checkpoint_path) else FLAGS.checkpoint_path

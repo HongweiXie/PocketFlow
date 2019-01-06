@@ -20,7 +20,7 @@ import os
 import tensorflow as tf
 
 from datasets.abstract_dataset import AbstractDataset
-from utils.external.imagenet_preprocessing import preprocess_image
+from utils.external.places_preprocessing import preprocess_image
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -122,3 +122,5 @@ class PlacesDataset(AbstractDataset):
       self.batch_size = FLAGS.batch_size_eval
     self.dataset_fn = tf.data.TFRecordDataset
     self.parse_fn = lambda x: parse_fn(x, is_train=is_train)
+    # self.summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+    # print('summaries')
