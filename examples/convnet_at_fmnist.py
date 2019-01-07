@@ -18,7 +18,7 @@
 
 import tensorflow as tf
 
-from nets.abstract_model_helper import AbstractModelHelper
+from nets_builder.abstract_model_helper import AbstractModelHelper
 from datasets.fmnist_dataset import FMnistDataset
 from utils.lrn_rate_utils import setup_lrn_rate_piecewise_constant
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw

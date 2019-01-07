@@ -115,7 +115,7 @@ class PlacesDataset(AbstractDataset):
 
     # configure file patterns & function handlers
     if is_train:
-      self.file_pattern = os.path.join(data_dir, 'train-*-of-*')
+      self.file_pattern = os.path.join(data_dir, 'val-*-of-*')
       self.batch_size = FLAGS.batch_size
     else:
       self.file_pattern = os.path.join(data_dir, 'val-*-of-*')

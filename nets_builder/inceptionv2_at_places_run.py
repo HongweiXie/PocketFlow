@@ -19,7 +19,7 @@
 import traceback
 import tensorflow as tf
 
-from nets.resnet_at_ilsvrc12 import ModelHelper
+from nets_builder.inceptionv2_at_places import ModelHelper
 from learners.learner_utils import create_learner
 
 FLAGS = tf.app.flags.FLAGS

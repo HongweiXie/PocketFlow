@@ -161,8 +161,9 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
         self.sess_train = sess
         with tf.control_dependencies(self.update_ops):
           self.train_op = optimizer.apply_gradients(grads, global_step=self.global_step)
-        # summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
-        # print('summaries')
+
+        # tf.summary.FileWriter(os.path.join(FLAGS.log_dir,'graph_log'), sess.graph_def)
+        self.sm_writer.add_graph(sess.graph)
         self.summary_op = tf.summary.merge_all()
         self.log_op = [lrn_rate, loss] + list(metrics.values())
         self.log_op_names = ['lr', 'loss'] + list(metrics.keys())

@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Execution script for ConvNet models on the Fashion-MNIST dataset."""
+"""Execution script for LeNet-like models on the CIFAR-10 dataset."""
 
 import traceback
 import tensorflow as tf
 
-from nets_builder.convnet_at_fmnist import ModelHelper
+from nets_builder.lenet_at_cifar10 import ModelHelper
 from learners.learner_utils import create_learner
 
 FLAGS = tf.app.flags.FLAGS

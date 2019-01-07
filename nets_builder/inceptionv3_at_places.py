@@ -14,60 +14,71 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Model helper for creating a MobileNet model for the ILSVRC-12 dataset."""
+"""Model helper for creating a ResNet model for the ILSVRC-12 dataset."""
 
 import tensorflow as tf
-from tensorflow.contrib import slim
 
-from nets.abstract_model_helper import AbstractModelHelper
+from nets_builder.abstract_model_helper import AbstractModelHelper
 from datasets.places_dataset import PlacesDataset
-from utils.external import mobilenet_v1 as MobileNetV1
-from utils.external import mobilenet_v2 as MobileNetV2
+from slim.nets import inception_v3
 from utils.lrn_rate_utils import setup_lrn_rate_piecewise_constant
-from utils.lrn_rate_utils import setup_lrn_rate_exponential_decay
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('mobilenet_version', 1, 'MobileNet\'s version (1 or 2)')
-tf.app.flags.DEFINE_float('mobilenet_depth_mult', 1.0, 'MobileNet\'s depth multiplier')
+tf.app.flags.DEFINE_integer('resnet_size', 18, '# of layers in the ResNet model')
 tf.app.flags.DEFINE_float('nb_epochs_rat', 1.0, '# of training epochs\'s ratio')
-tf.app.flags.DEFINE_float('lrn_rate_init', 0.045, 'initial learning rate')
-tf.app.flags.DEFINE_float('batch_size_norm', 96, 'normalization factor of batch size')
+tf.app.flags.DEFINE_float('lrn_rate_init', 1e-1, 'initial learning rate')
+tf.app.flags.DEFINE_float('batch_size_norm', 256, 'normalization factor of batch size')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'momentum coefficient')
-tf.app.flags.DEFINE_float('loss_w_dcy', 4e-5, 'weight decaying loss\'s coefficient')
+tf.app.flags.DEFINE_float('loss_w_dcy', 1e-4, 'weight decaying loss\'s coefficient')
 
-def forward_fn(inputs, is_train):
+def get_block_sizes(resnet_size):
+  """Get block sizes for different network depth.
+
+  Args:
+  * resnet_size: network depth
+
+  Returns:
+  * block_sizes: list of sizes of residual blocks
+  """
+
+  choices = {
+    18: [2, 2, 2, 2],
+    34: [3, 4, 6, 3],
+    50: [3, 4, 6, 3],
+    101: [3, 4, 23, 3],
+    152: [3, 8, 36, 3],
+    200: [3, 24, 36, 3],
+  }
+
+  try:
+    return choices[resnet_size]
+  except KeyError:
+    raise ValueError('invalid # of layers for ResNet: {}'.format(resnet_size))
+
+def forward_fn(inputs, is_train, data_format):
   """Forward pass function.
 
   Args:
   * inputs: inputs to the network's forward pass
   * is_train: whether to use the forward pass with training operations inserted
+  * data_format: data format ('channels_last' OR 'channels_first')
 
   Returns:
-  * outputs: outputs from the network's forward pass
+  * inputs: outputs from the network's forward pass
   """
 
+  # setup hyper-parameters
   nb_classes = FLAGS.nb_classes
-  depth_mult = FLAGS.mobilenet_depth_mult
 
-  if FLAGS.mobilenet_version == 1:
-    scope_fn = MobileNetV1.mobilenet_v1_arg_scope
-    with slim.arg_scope(scope_fn(is_training=is_train)): # pylint: disable=not-context-manager
-      outputs, __ = MobileNetV1.mobilenet_v1(
-        inputs, is_training=is_train, num_classes=nb_classes, depth_multiplier=depth_mult)
-  elif FLAGS.mobilenet_version == 2:
-    scope_fn = MobileNetV2.training_scope
-    with slim.arg_scope(scope_fn(is_training=is_train)): # pylint: disable=not-context-manager
-      outputs, __ = MobileNetV2.mobilenet(
-        inputs, num_classes=nb_classes, depth_multiplier=depth_mult)
-  else:
-    raise ValueError('invalid MobileNet version: {}'.format(FLAGS.mobilenet_version))
+  # model definition
+  logits,_=inception_v3.inception_v3(inputs,num_classes=nb_classes,is_training=is_train)
 
-  return outputs
+  return logits
 
 class ModelHelper(AbstractModelHelper):
-  """Model helper for creating a MobileNet model for the ILSVRC-12 dataset."""
+  """Model helper for creating a ResNet model for the ILSVRC-12 dataset."""
 
   def __init__(self):
     """Constructor function."""
@@ -92,16 +103,12 @@ class ModelHelper(AbstractModelHelper):
   def forward_train(self, inputs, data_format='channels_last'):
     """Forward computation at training."""
 
-    assert data_format == 'channels_last', 'MobileNet only supports \'channels_last\' data format'
-
-    return forward_fn(inputs, is_train=True)
+    return forward_fn(inputs, is_train=True, data_format=data_format)
 
   def forward_eval(self, inputs, data_format='channels_last'):
     """Forward computation at evaluation."""
 
-    assert data_format == 'channels_last', 'MobileNet only supports \'channels_last\' data format'
-
-    return forward_fn(inputs, is_train=False)
+    return forward_fn(inputs, is_train=False, data_format=data_format)
 
   def calc_loss(self, labels, outputs, trainable_vars):
     """Calculate loss (and some extra evaluation metrics)."""
@@ -120,21 +127,12 @@ class ModelHelper(AbstractModelHelper):
   def setup_lrn_rate(self, global_step):
     """Setup the learning rate (and number of training iterations)."""
 
+    nb_epochs = 100
+    idxs_epoch = [30, 60, 80, 90]
+    decay_rates = [1.0, 0.1, 0.01, 0.001, 0.0001]
     batch_size = FLAGS.batch_size * (1 if not FLAGS.enbl_multi_gpu else mgw.size())
-    if FLAGS.mobilenet_version == 1:
-      nb_epochs = 100
-      idxs_epoch = [30, 60, 80, 90]
-      decay_rates = [1.0, 0.1, 0.01, 0.001, 0.0001]
-      lrn_rate = setup_lrn_rate_piecewise_constant(global_step, batch_size, idxs_epoch, decay_rates)
-      nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
-    elif FLAGS.mobilenet_version == 2:
-      nb_epochs = 412
-      epoch_step = 2.5
-      decay_rate = 0.98 ** epoch_step  # which is better, 0.98 OR (0.98 ** epoch_step)?
-      lrn_rate = setup_lrn_rate_exponential_decay(global_step, batch_size, epoch_step, decay_rate)
-      nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
-    else:
-      raise ValueError('invalid MobileNet version: {}'.format(FLAGS.mobilenet_version))
+    lrn_rate = setup_lrn_rate_piecewise_constant(global_step, batch_size, idxs_epoch, decay_rates)
+    nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
 
     return lrn_rate, nb_iters
 
@@ -142,7 +140,7 @@ class ModelHelper(AbstractModelHelper):
   def model_name(self):
     """Model's name."""
 
-    return 'mobilenet_v%d' % FLAGS.mobilenet_version
+    return 'resnet_%d' % FLAGS.resnet_size
 
   @property
   def dataset_name(self):

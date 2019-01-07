@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Execution script for MobileNet models on the ILSVRC-12 dataset."""
+"""Execution script for ResNet models on the CIFAR-10 dataset."""
 
 import traceback
 import tensorflow as tf
 
-from nets.mobilenet_at_ilsvrc12 import ModelHelper
+from nets_builder.resnet_at_cifar10 import ModelHelper
 from learners.learner_utils import create_learner
 
 FLAGS = tf.app.flags.FLAGS

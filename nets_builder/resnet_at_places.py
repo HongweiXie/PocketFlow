@@ -14,24 +14,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Model helper for creating a ResNet model for the CIFAR-10 dataset."""
+"""Model helper for creating a ResNet model for the ILSVRC-12 dataset."""
 
 import tensorflow as tf
 
-from nets.abstract_model_helper import AbstractModelHelper
-from datasets.cifar10_dataset import Cifar10Dataset
+from nets_builder.abstract_model_helper import AbstractModelHelper
+from datasets.places_dataset import PlacesDataset
 from utils.external import resnet_model as ResNet
 from utils.lrn_rate_utils import setup_lrn_rate_piecewise_constant
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('resnet_size', 20, '# of layers in the ResNet model')
+tf.app.flags.DEFINE_integer('resnet_size', 18, '# of layers in the ResNet model')
 tf.app.flags.DEFINE_float('nb_epochs_rat', 1.0, '# of training epochs\'s ratio')
 tf.app.flags.DEFINE_float('lrn_rate_init', 1e-1, 'initial learning rate')
-tf.app.flags.DEFINE_float('batch_size_norm', 128, 'normalization factor of batch size')
+tf.app.flags.DEFINE_float('batch_size_norm', 256, 'normalization factor of batch size')
 tf.app.flags.DEFINE_float('momentum', 0.9, 'momentum coefficient')
-tf.app.flags.DEFINE_float('loss_w_dcy', 2e-4, 'weight decaying loss\'s coefficient')
+tf.app.flags.DEFINE_float('loss_w_dcy', 1e-4, 'weight decaying loss\'s coefficient')
+
+def get_block_sizes(resnet_size):
+  """Get block sizes for different network depth.
+
+  Args:
+  * resnet_size: network depth
+
+  Returns:
+  * block_sizes: list of sizes of residual blocks
+  """
+
+  choices = {
+    18: [2, 2, 2, 2],
+    34: [3, 4, 6, 3],
+    50: [3, 4, 6, 3],
+    101: [3, 4, 23, 3],
+    152: [3, 8, 36, 3],
+    200: [3, 24, 36, 3],
+  }
+
+  try:
+    return choices[resnet_size]
+  except KeyError:
+    raise ValueError('invalid # of layers for ResNet: {}'.format(resnet_size))
 
 def forward_fn(inputs, is_train, data_format):
   """Forward pass function.
@@ -45,17 +69,21 @@ def forward_fn(inputs, is_train, data_format):
   * inputs: outputs from the network's forward pass
   """
 
+  # for deeper networks, use bottleneck layers for speed-up
+  if FLAGS.resnet_size < 50:
+    bottleneck = False
+  else:
+    bottleneck = True
+
   # setup hyper-parameters
-  nb_blocks = (FLAGS.resnet_size - 2) // 6
-  bottleneck = False
   nb_classes = FLAGS.nb_classes
-  nb_filters = 16
-  kernel_size = 3
-  conv_stride = 1
-  first_pool_size = None
-  first_pool_stride = None
-  block_sizes = [nb_blocks] * 3
-  block_strides = [1, 2, 2]
+  nb_filters = 64
+  kernel_size = 7
+  conv_stride = 2
+  first_pool_size = 3
+  first_pool_stride = 2
+  block_sizes = get_block_sizes(FLAGS.resnet_size)
+  block_strides = [1, 2, 2, 2]
 
   # model definition
   model = ResNet.Model(
@@ -66,7 +94,7 @@ def forward_fn(inputs, is_train, data_format):
   return inputs
 
 class ModelHelper(AbstractModelHelper):
-  """Model helper for creating a ResNet model for the CIFAR-10 dataset."""
+  """Model helper for creating a ResNet model for the ILSVRC-12 dataset."""
 
   def __init__(self):
     """Constructor function."""
@@ -75,8 +103,8 @@ class ModelHelper(AbstractModelHelper):
     super(ModelHelper, self).__init__()
 
     # initialize training & evaluation subsets
-    self.dataset_train = Cifar10Dataset(is_train=True)
-    self.dataset_eval = Cifar10Dataset(is_train=False)
+    self.dataset_train = PlacesDataset(is_train=True)
+    self.dataset_eval = PlacesDataset(is_train=False)
 
   def build_dataset_train(self, enbl_trn_val_split=False):
     """Build the data subset for training, usually with data augmentation."""
@@ -104,19 +132,20 @@ class ModelHelper(AbstractModelHelper):
     loss = tf.losses.softmax_cross_entropy(labels, outputs)
     loss_filter = lambda var: 'batch_normalization' not in var.name
     loss += FLAGS.loss_w_dcy \
-      * tf.add_n([tf.nn.l2_loss(var) for var in trainable_vars if loss_filter(var)])
-    accuracy = tf.reduce_mean(
-      tf.cast(tf.equal(tf.argmax(labels, axis=1), tf.argmax(outputs, axis=1)), tf.float32))
-    metrics = {'accuracy': accuracy}
+        * tf.add_n([tf.nn.l2_loss(var) for var in trainable_vars if loss_filter(var)])
+    targets = tf.argmax(labels, axis=1)
+    acc_top1 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(outputs, targets, 1), tf.float32))
+    acc_top5 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(outputs, targets, 5), tf.float32))
+    metrics = {'accuracy': acc_top5, 'acc_top1': acc_top1, 'acc_top5': acc_top5}
 
     return loss, metrics
 
   def setup_lrn_rate(self, global_step):
     """Setup the learning rate (and number of training iterations)."""
 
-    nb_epochs = 250
-    idxs_epoch = [100, 150, 200]
-    decay_rates = [1.0, 0.1, 0.01, 0.001]
+    nb_epochs = 100
+    idxs_epoch = [30, 60, 80, 90]
+    decay_rates = [1.0, 0.1, 0.01, 0.001, 0.0001]
     batch_size = FLAGS.batch_size * (1 if not FLAGS.enbl_multi_gpu else mgw.size())
     lrn_rate = setup_lrn_rate_piecewise_constant(global_step, batch_size, idxs_epoch, decay_rates)
     nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
@@ -133,4 +162,4 @@ class ModelHelper(AbstractModelHelper):
   def dataset_name(self):
     """Dataset's name."""
 
-    return 'cifar_10'
+    return 'places'

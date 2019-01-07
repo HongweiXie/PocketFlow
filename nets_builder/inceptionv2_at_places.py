@@ -18,15 +18,16 @@
 
 import tensorflow as tf
 
-from nets.abstract_model_helper import AbstractModelHelper
+from nets_builder.abstract_model_helper import AbstractModelHelper
 from datasets.places_dataset import PlacesDataset
-from slim.nets import inception_v3
+from utils.external.inception_v2_caffe import InceptionV2
+from slim.nets import inception_v2
 from utils.lrn_rate_utils import setup_lrn_rate_piecewise_constant
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('resnet_size', 18, '# of layers in the ResNet model')
+tf.app.flags.DEFINE_string('inception_v2_version', 'caffe', '# of layers in the ResNet model')
 tf.app.flags.DEFINE_float('nb_epochs_rat', 1.0, '# of training epochs\'s ratio')
 tf.app.flags.DEFINE_float('lrn_rate_init', 1e-1, 'initial learning rate')
 tf.app.flags.DEFINE_float('batch_size_norm', 256, 'normalization factor of batch size')
@@ -73,7 +74,11 @@ def forward_fn(inputs, is_train, data_format):
   nb_classes = FLAGS.nb_classes
 
   # model definition
-  logits,_=inception_v3.inception_v3(inputs,num_classes=nb_classes,is_training=is_train)
+  if(FLAGS.inception_v2_version=='caffe'):
+    net=InceptionV2({'input':inputs},is_train,nb_classes)
+    logits=net.get_output()
+  else:
+    logits,_=inception_v2.inception_v2(inputs,nb_classes,is_train)
 
   return logits
 
@@ -140,7 +145,7 @@ class ModelHelper(AbstractModelHelper):
   def model_name(self):
     """Model's name."""
 
-    return 'resnet_%d' % FLAGS.resnet_size
+    return 'inceptionv2'
 
   @property
   def dataset_name(self):

@@ -21,10 +21,10 @@ import traceback
 import tensorflow as tf
 
 # NOTE: un-comment the corresponding <ModelHelper> before conversion
-#from nets.lenet_at_cifar10 import ModelHelper
-#from nets.resnet_at_cifar10 import ModelHelper
-from nets.resnet_at_ilsvrc12 import ModelHelper
-#from nets.mobilenet_at_ilsvrc12 import ModelHelper
+#from nets_builder.lenet_at_cifar10 import ModelHelper
+#from nets_builder.resnet_at_cifar10 import ModelHelper
+from nets_builder.resnet_at_ilsvrc12 import ModelHelper
+#from nets_builder.mobilenet_at_ilsvrc12 import ModelHelper
 
 FLAGS = tf.app.flags.FLAGS
 
