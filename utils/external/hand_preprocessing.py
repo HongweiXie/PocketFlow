@@ -37,15 +37,15 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-_R_MEAN = 123.68
-_G_MEAN = 116.78
-_B_MEAN = 103.94
+_R_MEAN = 124.
+_G_MEAN = 117.
+_B_MEAN = 104.
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 
 # The lower bound for the smallest side of the image for aspect-preserving
 # resizing. For example, if an image is 500 x 1000, it will be resized to
 # _RESIZE_MIN x (_RESIZE_MIN * 2).
-_RESIZE_MIN = 256
+_RESIZE_MIN = 110
 
 
 def _decode_crop_and_flip(image_buffer, bbox, num_channels):
@@ -76,9 +76,9 @@ def _decode_crop_and_flip(image_buffer, bbox, num_channels):
   sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
       tf.image.extract_jpeg_shape(image_buffer),
       bounding_boxes=bbox,
-      min_object_covered=0.1,
+      min_object_covered=0.5,
       aspect_ratio_range=[0.75, 1.33],
-      area_range=[0.05, 1.0],
+      area_range=[0.5, 1.0],
       max_attempts=100,
       use_image_if_no_bounding_boxes=True)
   bbox_begin, bbox_size, _ = sample_distorted_bounding_box
@@ -249,9 +249,7 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     # For training, we want to randomize some of the distortions.
     image = _decode_crop_and_flip(image_buffer, bbox, num_channels)
     image = _resize_image(image, output_height, output_width)
-    if sm_writer is not None:
-      sm_writer.add_summary(tf.summary.image('images_with_distorted_bounding_box',
-                       image))
+    tf.summary.image('images_resized',image)
   else:
     # For validation, we want to decode, resize, then just crop the middle.
     image = tf.image.decode_jpeg(image_buffer, channels=num_channels)

@@ -121,6 +121,8 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
       with tf.variable_scope(self.data_scope):
         iterator = self.build_dataset_train() if is_train else self.build_dataset_eval()
         images, labels = iterator.get_next()
+
+        tf.summary.image('final_images',images)
         tf.add_to_collection('images_final', images)
 
       # model definition - distilled model

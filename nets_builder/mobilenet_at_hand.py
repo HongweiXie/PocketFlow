@@ -128,7 +128,10 @@ class ModelHelper(AbstractModelHelper):
       # def foo(x):
       #   return int(x*FLAGS.nb_epochs_rat)
       # idxs_epoch=list(map(foo,idxs_epoch))
-      decay_rates = [1.0, 0.1, 0.01, 0.001]
+      if FLAGS.learner=='uniform-tf':
+        decay_rates=[1.0, 0.1, 0.05, 0.01]
+      else:
+        decay_rates = [1.0, 0.1, 0.01, 0.001]
       lrn_rate = setup_lrn_rate_piecewise_constant(global_step, batch_size, idxs_epoch, decay_rates)
       nb_iters = int(FLAGS.nb_smpls_train * nb_epochs * FLAGS.nb_epochs_rat / batch_size)
     elif FLAGS.mobilenet_version == 2:

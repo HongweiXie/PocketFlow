@@ -12,3 +12,4 @@ path.conf
 nvidia-smi-dump
 .idea/
 log*
+test
