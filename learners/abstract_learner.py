@@ -36,6 +36,11 @@ tf.app.flags.DEFINE_string('save_path_eval', './models_eval/model.ckpt',
 tf.app.flags.DEFINE_boolean('enbl_dst', False, 'enable the distillation loss for training')
 tf.app.flags.DEFINE_boolean('enbl_warm_start', False, 'enable warm start for training')
 
+tf.app.flags.DEFINE_string('checkpoint_path', None, 'checkpoint_path')
+tf.app.flags.DEFINE_string('checkpoint_exclude_scopes', '', 'checkpoint_exclude_scopes')
+tf.app.flags.DEFINE_boolean('ignore_missing_vars', True, 'ignore_missing_vars')
+tf.app.flags.DEFINE_string('checkpoint_model_scope', '', 'checkpoint_model_scope')
+
 class AbstractLearner(ABC):  # pylint: disable=too-many-instance-attributes
   """Abstract class for learners.
 

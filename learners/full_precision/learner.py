@@ -26,10 +26,6 @@ from learners.distillation_helper import DistillationHelper
 from utils.multi_gpu_wrapper import MultiGpuWrapper as mgw
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('checkpoint_path', None, 'checkpoint_path')
-tf.app.flags.DEFINE_string('checkpoint_exclude_scopes', '', 'checkpoint_exclude_scopes')
-tf.app.flags.DEFINE_boolean('ignore_missing_vars', True, 'ignore_missing_vars')
-tf.app.flags.DEFINE_string('checkpoint_model_scope', '', 'checkpoint_model_scope')
 
 
 class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-attributes
@@ -190,6 +186,45 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
       save_path = self.saver_eval.save(self.sess_eval, FLAGS.save_path_eval)
     tf.logging.info('model saved to ' + save_path)
 
+
+
+  def __restore_model(self, is_train):
+    """Restore a model from the latest checkpoint files.
+
+    Args:
+    * is_train: whether to restore a model for training
+    """
+    # save_path = tf.train.latest_checkpoint(FLAGS.save_path)
+    save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
+    if is_train:
+      self.saver_train.restore(self.sess_train, save_path)
+    else:
+      self.saver_eval.restore(self.sess_eval, save_path)
+    tf.logging.info('model restored from ' + save_path)
+
+  def __monitor_progress(self, summary, log_rslt, idx_iter, time_step):
+    """Monitor the training progress.
+
+    Args:
+    * summary: summary protocol buffer
+    * log_rslt: logging operations' results
+    * idx_iter: index of the training iteration
+    * time_step: time step between two summary operations
+    """
+
+    # write summaries for TensorBoard visualization
+    self.sm_writer.add_summary(summary, idx_iter)
+
+    # compute the training speed
+    speed = FLAGS.batch_size * FLAGS.summ_step / time_step
+    if FLAGS.enbl_multi_gpu:
+      speed *= mgw.size()
+
+    # display monitored statistics
+    log_str = ' | '.join(['%s = %.4e' % (name, value)
+                          for name, value in zip(self.log_op_names, log_rslt)])
+    tf.logging.info('iter #%d: %s | speed = %.2f pics / sec' % (idx_iter + 1, log_str, speed))
+
   def __build_restore_from_checkpoint_saver(self):
     if FLAGS.checkpoint_path is None:
       return None
@@ -250,41 +285,3 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
     if variables_to_restore:
       saver = tf.train.Saver(variables_to_restore, reshape=False)
       return saver
-
-
-  def __restore_model(self, is_train):
-    """Restore a model from the latest checkpoint files.
-
-    Args:
-    * is_train: whether to restore a model for training
-    """
-    # save_path = tf.train.latest_checkpoint(FLAGS.save_path)
-    save_path = tf.train.latest_checkpoint(os.path.dirname(FLAGS.save_path))
-    if is_train:
-      self.saver_train.restore(self.sess_train, save_path)
-    else:
-      self.saver_eval.restore(self.sess_eval, save_path)
-    tf.logging.info('model restored from ' + save_path)
-
-  def __monitor_progress(self, summary, log_rslt, idx_iter, time_step):
-    """Monitor the training progress.
-
-    Args:
-    * summary: summary protocol buffer
-    * log_rslt: logging operations' results
-    * idx_iter: index of the training iteration
-    * time_step: time step between two summary operations
-    """
-
-    # write summaries for TensorBoard visualization
-    self.sm_writer.add_summary(summary, idx_iter)
-
-    # compute the training speed
-    speed = FLAGS.batch_size * FLAGS.summ_step / time_step
-    if FLAGS.enbl_multi_gpu:
-      speed *= mgw.size()
-
-    # display monitored statistics
-    log_str = ' | '.join(['%s = %.4e' % (name, value)
-                          for name, value in zip(self.log_op_names, log_rslt)])
-    tf.logging.info('iter #%d: %s | speed = %.2f pics / sec' % (idx_iter + 1, log_str, speed))

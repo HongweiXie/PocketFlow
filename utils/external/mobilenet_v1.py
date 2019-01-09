@@ -314,7 +314,7 @@ def mobilenet_v1(inputs,
                  spatial_squeeze=True,
                  reuse=None,
                  scope='MobilenetV1',
-                 global_pool=False):
+                 global_pool=False,final_endpoint='Conv2d_13_pointwise'):
   """Mobilenet v1 model for classification.
 
   Args:
@@ -364,7 +364,7 @@ def mobilenet_v1(inputs,
       net, end_points = mobilenet_v1_base(inputs, scope=scope,
                                           min_depth=min_depth,
                                           depth_multiplier=depth_multiplier,
-                                          conv_defs=conv_defs)
+                                          conv_defs=conv_defs,final_endpoint=final_endpoint)
       with tf.variable_scope('Logits'):
         if global_pool:
           # Global average pooling.
