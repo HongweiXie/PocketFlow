@@ -37,9 +37,9 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-_R_MEAN = 123.68
-_G_MEAN = 116.78
-_B_MEAN = 103.94
+_R_MEAN = 128.
+_G_MEAN = 128.
+_B_MEAN = 128.
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 
 # The lower bound for the smallest side of the image for aspect-preserving

@@ -5,7 +5,8 @@ _G_MEAN = 117
 _B_MEAN = 104
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 class TFLiteClassifier(object):
-    def __init__(self,tflite_model_file):
+    def __init__(self,tflite_model_file,quant=True):
+        self.quant=quant
         self.interpreter = tf.contrib.lite.Interpreter(model_path=str(tflite_model_file))
         self.interpreter.allocate_tensors()
         self.input_index = self.interpreter.get_input_details()[0]['index']
@@ -14,8 +15,13 @@ class TFLiteClassifier(object):
         self.cls = self.outputs[0]['index']
 
     def inference(self,img):
-        img=img-np.reshape(_CHANNEL_MEANS,(1,1,3))
-        img=img.astype(np.float32)
+        '''
+        :param img: RGB-uint8
+        :return: label
+        '''
+        if not self.quant:
+            img=img-np.reshape(_CHANNEL_MEANS,(1,1,3))
+            img=img.astype(np.uint8)
         self.interpreter.set_tensor(self.input_index, [img])
         self.interpreter.invoke()
         cls_val= self.interpreter.get_tensor(self.cls)[0]
@@ -26,27 +32,29 @@ if __name__ == '__main__':
     import glob
     import os
     import cv2
-    input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification'
-    input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification/val.txt'
+    import tqdm
+    input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2'
+    input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/val.txt'
     cate_dir={'background':0, 'hand':1}
     input_list=[]
     with open(input_list_file,'r') as f:
         input_list=f.read().split('\n')
-    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/nets_builder/models_uqtf_eval/model_original.tflite')
+    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/nets_builder/models_uqtf_eval/model_quant.tflite')
     total=0
     correct=0
-    for input_file in input_list:
+    for input_file in tqdm.tqdm(input_list):
         # input_file=input_list[-100]
         if len(input_file)>1:
             total+=1
             words=os.path.join(input_dir, input_file).split(' ')
             input_file= words[0]
             label=cate_dir[words[1]]
-            if label==0:
-                continue
+            # if label==0:
+            #     continue
             img=cv2.imread(input_file)
             orig=img
             img=cv2.resize(img,(96,96))
+            img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
             cls=classifier.inference(img)
             if cls==label:
                 correct+=1
