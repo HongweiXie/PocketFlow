@@ -1,11 +1,13 @@
 import tensorflow as tf
 import numpy as np
-_R_MEAN = 124
-_G_MEAN = 117
-_B_MEAN = 104
+import cv2
+_R_MEAN = 128
+_G_MEAN = 128
+_B_MEAN = 128
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 class TFLiteClassifier(object):
-    def __init__(self,tflite_model_file,quant=True):
+    def __init__(self,tflite_model_file,input_size,quant=True):
+        self.input_size=input_size
         self.quant=quant
         self.interpreter = tf.contrib.lite.Interpreter(model_path=str(tflite_model_file))
         self.interpreter.allocate_tensors()
@@ -19,6 +21,7 @@ class TFLiteClassifier(object):
         :param img: RGB-uint8
         :return: label
         '''
+        img = cv2.resize(img, (self.input_size, self.input_size))
         if not self.quant:
             img=img-np.reshape(_CHANNEL_MEANS,(1,1,3))
             img=img.astype(np.uint8)
@@ -31,15 +34,17 @@ class TFLiteClassifier(object):
 if __name__ == '__main__':
     import glob
     import os
-    import cv2
     import tqdm
+    import shutil
     input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2'
     input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/val.txt'
     cate_dir={'background':0, 'hand':1}
     input_list=[]
     with open(input_list_file,'r') as f:
         input_list=f.read().split('\n')
-    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/nets_builder/models_uqtf_eval/model_quant.tflite')
+    SIZE=64
+    # classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/models_uqtf_eval/model_quant.tflite')
+    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/model_quant.tflite',SIZE)
     total=0
     correct=0
     for input_file in tqdm.tqdm(input_list):
@@ -53,14 +58,14 @@ if __name__ == '__main__':
             #     continue
             img=cv2.imread(input_file)
             orig=img
-            img=cv2.resize(img,(96,96))
             img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
             cls=classifier.inference(img)
             if cls==label:
                 correct+=1
             else:
-                print(input_file,cls,label)
-                cv2.imshow("img", orig)
-                cv2.waitKey(0)
+                print(input_file,'ret={}'.format(cls),'gt={}'.format(label))
+                # shutil.copyfile(input_file,)
+                # cv2.imshow("img", orig)
+                # cv2.waitKey(0)
 
     print('accuracy:{}'.format(correct*1.0/total))

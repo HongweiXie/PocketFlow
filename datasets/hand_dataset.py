@@ -32,8 +32,8 @@ tf.app.flags.DEFINE_integer('batch_size', 64, 'batch size per GPU for training')
 tf.app.flags.DEFINE_integer('batch_size_eval', 100, 'batch size for evaluation')
 
 # hand specifications
-IMAGE_HEI = 96
-IMAGE_WID = 96
+IMAGE_HEI = 64
+IMAGE_WID = 64
 IMAGE_CHN = 3
 
 def parse_example_proto(example_serialized):
