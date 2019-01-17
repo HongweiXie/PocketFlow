@@ -36,30 +36,38 @@ if __name__ == '__main__':
     import os
     import tqdm
     import shutil
-    input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2'
-    input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/val.txt'
+    input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/classify'
+    input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/classify/val.txt'
     cate_dir={'background':0, 'hand':1}
     input_list=[]
     with open(input_list_file,'r') as f:
         input_list=f.read().split('\n')
     SIZE=64
-    # classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/models_uqtf_eval/model_quant.tflite')
-    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/model_quant.tflite',SIZE)
+    classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/classify/75_crop_0.5_rotate90/models_uqtf_eval/model_quant.tflite',SIZE)
+    # classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/model_quant.tflite',SIZE)
     total=0
     correct=0
+    confuse_matrix=np.zeros((2,2))
     for input_file in tqdm.tqdm(input_list):
         # input_file=input_list[-100]
         if len(input_file)>1:
-            total+=1
+
             words=os.path.join(input_dir, input_file).split(' ')
+            if len(words)!=2:
+                continue
+
             input_file= words[0]
-            label=cate_dir[words[1]]
+            label=int(cate_dir[words[1]])
             # if label==0:
             #     continue
             img=cv2.imread(input_file)
             orig=img
+            if img is None:
+                continue
+            total += 1
             img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
             cls=classifier.inference(img)
+            confuse_matrix[label,cls]+=1
             if cls==label:
                 correct+=1
             else:
@@ -69,3 +77,4 @@ if __name__ == '__main__':
                 # cv2.waitKey(0)
 
     print('accuracy:{}'.format(correct*1.0/total))
+    print('confuse matrix:{}'.format(confuse_matrix))

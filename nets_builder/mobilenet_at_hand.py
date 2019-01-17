@@ -106,7 +106,6 @@ class ModelHelper(AbstractModelHelper):
 
   def calc_loss(self, labels, outputs, trainable_vars):
     """Calculate loss (and some extra evaluation metrics)."""
-
     loss = tf.losses.softmax_cross_entropy(labels, outputs)
     loss_filter = lambda var: 'batch_normalization' not in var.name
     loss += FLAGS.loss_w_dcy \
