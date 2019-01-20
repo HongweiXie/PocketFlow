@@ -104,6 +104,8 @@ class FullPrecLearner(AbstractLearner):  # pylint: disable=too-many-instance-att
     for idx, name in enumerate(self.eval_op_names):
       tf.logging.info('%s = %.4e' % (name, np.mean(eval_rslts[:, idx])))
 
+
+
   def __build(self, is_train):  # pylint: disable=too-many-locals
     """Build the training / evaluation graph.
 
