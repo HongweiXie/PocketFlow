@@ -28,7 +28,7 @@ class TFLiteClassifier(object):
         self.interpreter.set_tensor(self.input_index, [img])
         self.interpreter.invoke()
         cls_val= self.interpreter.get_tensor(self.cls)[0]
-        return np.argmax(cls_val)
+        return cls_val
 
 
 if __name__ == '__main__':
