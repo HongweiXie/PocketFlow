@@ -287,8 +287,14 @@ def _random_roate_90(image):
                          lambda: tf.image.rot90(image),
                          lambda: tf.image.rot90(image,3)))
 
-def _random_rotate(image,range):
-  angle = tf.random_uniform([], minval=range[0], maxval=range[1], dtype=tf.float32) * (3.1415926 / 180)
+def _random_rotate(image,label):
+  # 0:Other 1:OK 2:Palm 3:Left 4:Right
+  rotation_range_dict = [[-10., 10.], [-90., 90.], [-90., 90.], [-10., 10.], [-10., 10.]]
+  rotation_range_dict = tf.convert_to_tensor(rotation_range_dict)
+  start = tf.gather(rotation_range_dict, label)[0][0]
+  end = tf.gather(rotation_range_dict, label)[0][1]
+  # angle = tf.random_uniform([], minval=range[0], maxval=range[1], dtype=tf.float32) * (3.1415926 / 180)
+  angle = tf.random_uniform([], minval=start, maxval=end, dtype=tf.float32) * (3.1415926 / 180)
   rd=tf.random_uniform([],minval=0.,maxval=1.,dtype=tf.float32)
   return tf.cond(tf.less(rd,0.5),
           lambda:image,
@@ -317,8 +323,7 @@ def preprocess_image(image_buffer, bbox, label,output_height, output_width,
     A preprocessed image.
   """
   if is_training:
-    #0:Other 1:OK 2:Palm 3:Left 4:Right
-    rotation_range_dict={0:[-10,10],1:[-90,90],2:[-90,90],3:[-10,10],4:[-10,10]}
+
 
     # For training, we want to randomize some of the distortions.
     image = _decode_crop_and_flip(image_buffer, bbox, num_channels)
@@ -330,7 +335,7 @@ def preprocess_image(image_buffer, bbox, label,output_height, output_width,
     image = _resize_image(image, output_height, output_width)
     image = _distort_color(image)
     # image=_random_roate_90(image)
-    image=_random_rotate(image,rotation_range_dict[label])
+    image=_random_rotate(image,label)
     # image = tf.Print(image, [image], message='distored img', summarize=20)
     if orig_dtype != tf.float32:
       image = image*[255.,255.,255.]
