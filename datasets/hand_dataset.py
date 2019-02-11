@@ -83,7 +83,7 @@ def parse_fn(example_serialized, is_train):
 
   image_buffer, label, bbox = parse_example_proto(example_serialized)
   image = preprocess_image(
-    image_buffer=image_buffer, bbox=bbox, output_height=IMAGE_HEI,
+    image_buffer=image_buffer, bbox=bbox, label=label,output_height=IMAGE_HEI,
     output_width=IMAGE_WID, num_channels=IMAGE_CHN, is_training=is_train)
   label = tf.one_hot(tf.reshape(label, []), FLAGS.nb_classes)
 

@@ -88,7 +88,7 @@ def convert_pb_model_to_tflite(net, file_path_pb, file_path_tflite, enbl_quant):
     arg_list += [
       '--inference_type QUANTIZED_UINT8',
       '--mean_values 128',
-      '--std_dev_values 127']
+      '--std_dev_values 1']
     if FLAGS.enbl_post_quant:
       arg_list += [
         '--default_ranges_min 0',
@@ -206,6 +206,7 @@ def export_pb_tflite_model(net, file_path_meta, file_path_pb, file_paths_tflite)
     # obtain the output node
     net_logits = tf.get_collection(FLAGS.output_coll)[0]
     net_output = tf.nn.softmax(net_logits, name=net['output_name'])
+    # net_output = tf.identity(net_logits, name=net['output_name'])
     tf.logging.info('input: {} / output: {}'.format(net_input.name, net_output.name))
     tf.logging.info('input\'s shape: {}'.format(net_input.shape))
     tf.logging.info('output\'s shape: {}'.format(net_output.shape))
@@ -223,6 +224,7 @@ def export_pb_tflite_model(net, file_path_meta, file_path_pb, file_paths_tflite)
     file_name_pb = os.path.basename(file_path_pb)
     tf.train.write_graph(graph_def, FLAGS.model_dir, file_name_pb, as_text=False)
     tf.logging.info(file_path_pb + ' generated')
+    summaryWriter = tf.summary.FileWriter(os.path.join(FLAGS.model_dir, 'log'), sess.graph_def)
 
   # convert the *.pb model to a *.tflite model
   convert_pb_model_to_tflite(net, file_path_pb, file_paths_tflite['float'], enbl_quant=False)
@@ -261,6 +263,28 @@ def main(unused_argv):
                          'quant': os.path.join(FLAGS.model_dir, 'model_quantized.tflite')}
     export_pb_tflite_model(net, file_path_meta, file_path_pb, file_paths_tflite)
 
+    _,h,w,c=input_shape
+    print('shape',h,w,c)
+    os.system(' /home/sixd-ailabs/Develop/DL/TF/test/tensorflow/bazel-bin/tensorflow/contrib/lite/toco/toco \
+ --input_file={}/model_original.pb \
+ --output_file={}/model_quant.tflite \
+ --input_shapes=1,{},{},3 \
+ --input_arrays=net_input \
+ --output_arrays=net_output \
+ --inference_type=QUANTIZED_UINT8 \
+ --mean_values=128'.format(FLAGS.model_dir,FLAGS.model_dir,h,w))
+
+    os.system(' /home/sixd-ailabs/Develop/DL/TF/test/tensorflow/bazel-bin/tensorflow/contrib/lite/toco/toco \
+     --input_file={}/model_original.pb \
+     --output_file={}/model_quant.dot \
+    --output_format=GRAPHVIZ_DOT \
+     --input_shapes=1,{},{},3 \
+     --input_arrays=net_input \
+     --output_arrays=net_output \
+     --inference_type=QUANTIZED_UINT8 \
+     --mean_values=128'.format(FLAGS.model_dir, FLAGS.model_dir, h, w))
+
+    os.system('dot -Tpdf ${}/model_quant.dot -o ${}/model_quant.pdf'.format(FLAGS.model_dir,FLAGS.model_dir))
     # exit normally
     return 0
   except ValueError:

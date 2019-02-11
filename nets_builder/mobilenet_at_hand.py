@@ -18,7 +18,8 @@
 
 import tensorflow as tf
 from tensorflow.contrib import slim
-
+import sys
+sys.path.insert(0,'/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow')
 from nets_builder.abstract_model_helper import AbstractModelHelper
 from datasets.hand_dataset import HandDataset
 from utils.external import mobilenet_v1 as MobileNetV1
@@ -56,7 +57,8 @@ def forward_fn(inputs, is_train):
     scope_fn = MobileNetV1.mobilenet_v1_arg_scope
     with slim.arg_scope(scope_fn(is_training=is_train)): # pylint: disable=not-context-manager
       outputs, __ = MobileNetV1.mobilenet_v1(
-        inputs, is_training=is_train, num_classes=nb_classes, depth_multiplier=depth_mult,dropout_keep_prob=0.99, global_pool=True)
+        inputs, is_training=is_train, num_classes=nb_classes,
+        depth_multiplier=depth_mult,dropout_keep_prob=0.99, global_pool=True,final_endpoint='Conv2d_13_pointwise')
   elif FLAGS.mobilenet_version == 2:
     scope_fn = MobileNetV2.training_scope
     with slim.arg_scope(scope_fn(is_training=is_train)): # pylint: disable=not-context-manager

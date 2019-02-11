@@ -76,9 +76,9 @@ def _decode_crop_and_flip(image_buffer, bbox, num_channels):
   sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
       tf.image.extract_jpeg_shape(image_buffer),
       bounding_boxes=bbox,
-      min_object_covered=0.5,
+      min_object_covered=0.8,
       aspect_ratio_range=[0.75, 1.33],
-      area_range=[0.5, 1.0],
+      area_range=[0.8, 1.0],
       max_attempts=100,
       use_image_if_no_bounding_boxes=True)
   bbox_begin, bbox_size, _ = sample_distorted_bounding_box
@@ -294,7 +294,7 @@ def _random_rotate(image,range):
           lambda:image,
           lambda: tf.contrib.image.rotate([image], [angle], interpolation='BILINEAR')[0])
 
-def preprocess_image(image_buffer, bbox, output_height, output_width,
+def preprocess_image(image_buffer, bbox, label,output_height, output_width,
                      num_channels, is_training=False,sm_writer=None):
   """Preprocesses the given image.
 
@@ -317,6 +317,9 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     A preprocessed image.
   """
   if is_training:
+    #0:Other 1:OK 2:Palm 3:Left 4:Right
+    rotation_range_dict={0:[-10,10],1:[-90,90],2:[-90,90],3:[-10,10],4:[-10,10]}
+
     # For training, we want to randomize some of the distortions.
     image = _decode_crop_and_flip(image_buffer, bbox, num_channels)
     # image = tf.Print(image, [image], message='decoded img', summarize=20)
@@ -326,8 +329,8 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
       # image = tf.Print(image, [image], message='float img', summarize=20)
     image = _resize_image(image, output_height, output_width)
     image = _distort_color(image)
-    image=_random_roate_90(image)
-    image=_random_rotate(image,[-15,15])
+    # image=_random_roate_90(image)
+    image=_random_rotate(image,rotation_range_dict[label])
     # image = tf.Print(image, [image], message='distored img', summarize=20)
     if orig_dtype != tf.float32:
       image = image*[255.,255.,255.]

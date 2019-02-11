@@ -36,18 +36,18 @@ if __name__ == '__main__':
     import os
     import tqdm
     import shutil
-    input_dir='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/classify'
-    input_list_file='/home/sixd-ailabs/Develop/Human/Hand/hand_dataset/hand-classification2/classify/val.txt'
-    cate_dir={'background':0, 'hand':1}
+    input_dir='//home/sixd-ailabs/Downloads/cropokpalm'
+    input_list_file='/home/sixd-ailabs/Downloads/cropokpalm/val.txt'
+    cate_dir={'Other':0,'OK':1, 'Palm':2,'Left':3,'Right':4}
     input_list=[]
     with open(input_list_file,'r') as f:
         input_list=f.read().split('\n')
     SIZE=64
-    classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/classify/75_crop_0.5_rotate90/models_uqtf_eval/model_quant.tflite',SIZE)
-    # classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/model_quant.tflite',SIZE)
+    # classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/classify/75_crop_0.5_rotate90/models_uqtf_eval/model_quant.tflite',SIZE)
+    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/other_ok_palm_left_64_0.5_conv13.tflite',SIZE)
     total=0
     correct=0
-    confuse_matrix=np.zeros((2,2))
+    confuse_matrix=np.zeros((5,5))
     for input_file in tqdm.tqdm(input_list):
         # input_file=input_list[-100]
         if len(input_file)>1:
@@ -66,7 +66,8 @@ if __name__ == '__main__':
                 continue
             total += 1
             img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            cls=classifier.inference(img)
+            cls_val=classifier.inference(img)
+            cls=np.argmax(cls_val  )
             confuse_matrix[label,cls]+=1
             if cls==label:
                 correct+=1
