@@ -13,7 +13,7 @@ python nets_builder/mobilenet_at_hand_run.py \
 --nb_smpls_train=16000 \
 --nb_smpls_eval=1800 \
 --nb_smpls_val=1800 \
---nb_classes=4
+--nb_classes=5
 
 python nets_builder/mobilenet_at_hand_run.py \
 --data_dir_local=/home/sixd-ailabs/Downloads/cropokpalm/tfrecord_72 \
@@ -25,4 +25,4 @@ python nets_builder/mobilenet_at_hand_run.py \
 --nb_smpls_train=16000 \
 --nb_smpls_eval=1800 \
 --nb_smpls_val=1800 \
---nb_classes=4
+--nb_classes=5

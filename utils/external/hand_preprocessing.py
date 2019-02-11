@@ -73,20 +73,20 @@ def _decode_crop_and_flip(image_buffer, bbox, num_channels):
   # allowed range of aspect ratios, sizes and overlap with the human-annotated
   # bounding box. If no box is supplied, then we assume the bounding box is
   # the entire image.
-  sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
-      tf.image.extract_jpeg_shape(image_buffer),
-      bounding_boxes=bbox,
-      min_object_covered=0.8,
-      aspect_ratio_range=[0.75, 1.33],
-      area_range=[0.8, 1.0],
-      max_attempts=100,
-      use_image_if_no_bounding_boxes=True)
-  bbox_begin, bbox_size, _ = sample_distorted_bounding_box
-
-  # Reassemble the bounding box in the format the crop op requires.
-  offset_y, offset_x, _ = tf.unstack(bbox_begin)
-  target_height, target_width, _ = tf.unstack(bbox_size)
-  crop_window = tf.stack([offset_y, offset_x, target_height, target_width])
+  # sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
+  #     tf.image.extract_jpeg_shape(image_buffer),
+  #     bounding_boxes=bbox,
+  #     min_object_covered=0.8,
+  #     aspect_ratio_range=[0.75, 1.33],
+  #     area_range=[0.8, 1.0],
+  #     max_attempts=100,
+  #     use_image_if_no_bounding_boxes=True)
+  # bbox_begin, bbox_size, _ = sample_distorted_bounding_box
+  #
+  # # Reassemble the bounding box in the format the crop op requires.
+  # offset_y, offset_x, _ = tf.unstack(bbox_begin)
+  # target_height, target_width, _ = tf.unstack(bbox_size)
+  # crop_window = tf.stack([offset_y, offset_x, target_height, target_width])
 
   # Use the fused decode and crop op here, which is faster than each in series.
   # cropped = tf.image.decode_and_crop_jpeg(
@@ -94,7 +94,7 @@ def _decode_crop_and_flip(image_buffer, bbox, num_channels):
   cropped =tf.image.decode_jpeg(image_buffer)
 
   # Flip to add a little more random distortion in.
-  cropped = tf.image.random_flip_left_right(cropped)
+  # cropped = tf.image.random_flip_left_right(cropped)
   return cropped
 
 
@@ -289,7 +289,7 @@ def _random_roate_90(image):
 
 def _random_rotate(image,label):
   # 0:Other 1:OK 2:Palm 3:Left 4:Right
-  rotation_range_dict = [[-10., 10.], [-90., 90.], [-90., 90.], [-10., 10.], [-10., 10.]]
+  rotation_range_dict = [[-10., 10.], [-90., 90.], [-90., 90.], [-30., 30.], [-30., 30.]]
   rotation_range_dict = tf.convert_to_tensor(rotation_range_dict)
   start = tf.gather(rotation_range_dict, label)[0][0]
   end = tf.gather(rotation_range_dict, label)[0][1]
