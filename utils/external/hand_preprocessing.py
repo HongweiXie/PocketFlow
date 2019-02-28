@@ -289,7 +289,7 @@ def _random_roate_90(image):
 
 def _random_rotate(image,label):
   # 0:Other 1:OK 2:Palm 3:Left 4:Right
-  rotation_range_dict = [[-10., 10.], [-90., 90.], [-90., 90.], [-30., 30.], [-30., 30.]]
+  rotation_range_dict = [[-10., 10.], [-90., 90.], [-90., 90.], [-30., 30.], [-30., 30.],[-30., 30.]]
   rotation_range_dict = tf.convert_to_tensor(rotation_range_dict)
   start = tf.gather(rotation_range_dict, label)[0][0]
   end = tf.gather(rotation_range_dict, label)[0][1]

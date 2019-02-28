@@ -44,7 +44,7 @@ if __name__ == '__main__':
         input_list=f.read().split('\n')
     SIZE=64
     # classifier=TFLiteClassifier('/home/sixd-ailabs/Downloads/classify/75_crop_0.5_rotate90/models_uqtf_eval/model_quant.tflite',SIZE)
-    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/models_uqtf_eval/other_ok_palm_left_64_0.5_conv13.tflite',SIZE)
+    classifier=TFLiteClassifier('/home/sixd-ailabs/Develop/DL/MobileDL/PocketFlow/workspace/ok_palm/cls_5/models_uqtf_eval/other_ok_palm_left_right_64_0.5_conv13.tflite',SIZE)
     total=0
     correct=0
     confuse_matrix=np.zeros((5,5))
